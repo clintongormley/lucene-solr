@@ -25,11 +25,11 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  *
  */
-public class TestPatterCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
-  
+public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
+
   public void testSingleTermNonCaptureGroup() throws Exception {
     String input = "foobarb";
-    TokenStream ts = new PatterCaptureGroupTokenFilter(new MockTokenizer(
+    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
         new StringReader(input), MockTokenizer.WHITESPACE, false),
         Pattern.compile("(foo(bar))(?:b.*)"));
     String[] tokens = new String[] {"foobar", "bar"};
@@ -38,10 +38,10 @@ public class TestPatterCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
     int[] positions = new int[] {1, 0};
     assertTokenStreamContents(ts, tokens, startOffsets, endOffsets, positions);
   }
-  
+
   public void testSingleTerm() throws Exception {
     String input = "foobarbaz";
-    TokenStream ts = new PatterCaptureGroupTokenFilter(new MockTokenizer(
+    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
         new StringReader(input), MockTokenizer.WHITESPACE, false),
         Pattern.compile("(foo(bar))(b.*)"));
     String[] tokens = new String[] {"foobar", "bar", "baz"};
@@ -50,24 +50,24 @@ public class TestPatterCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
     int[] positions = new int[] {1, 0, 0};
     assertTokenStreamContents(ts, tokens, startOffsets, endOffsets, positions);
   }
-  
+
   public void testMultiTerm() throws Exception {
     String input = "foobarbaz foobarbeer foobeer foobeerbuzz";
-    TokenStream ts = new PatterCaptureGroupTokenFilter(new MockTokenizer(
+    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
         new StringReader(input), MockTokenizer.WHITESPACE, false),
         Pattern.compile("(foo(bar))(b.*)"));
     String[] tokens = new String[] {"foobar", "bar", "baz", "foobar", "bar",
         "beer", "foobeer", "foobeerbuzz"};
-    
+
     int[] startOffsets = new int[] {0, 3, 6, 10, 13, 16, 21, 29};
     int[] endOffsets = new int[] {6, 6, 9, 16, 16, 20, 28, 40};
     int[] positions = new int[] {1, 0, 0, 1, 0, 0, 1, 1};
     assertTokenStreamContents(ts, tokens, startOffsets, endOffsets, positions);
   }
-  
+
   public void testMultiTermNonCaptureGroup() throws Exception {
     String input = "foobarbaz foobarbeer foobeer foobeerbuzz";
-    TokenStream ts = new PatterCaptureGroupTokenFilter(new MockTokenizer(
+    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
         new StringReader(input), MockTokenizer.WHITESPACE, false),
         Pattern.compile("(foo(bar))(?:b.*)"));
     String[] tokens = new String[] {"foobar", "bar", "foobar", "bar",

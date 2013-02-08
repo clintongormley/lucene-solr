@@ -1,4 +1,5 @@
 package org.apache.lucene.analysis.pattern;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,21 +17,29 @@ package org.apache.lucene.analysis.pattern;
  * limitations under the License.
  */
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.Version;
 
 /**
- * TODO
+ * CaptureGroup uses Java regexes to emit multiple tokens - one for each capture
+ * group.
+ *
+ * For example, a pattern like:
+ *
+ * (https?://)+
  */
-public final class PatterCaptureGroupTokenFilter extends TokenFilter {
-  
+public final class PatternCaptureGroupTokenFilter extends TokenFilter {
+
   private final CharTermAttribute charTermAttr = addAttribute(CharTermAttribute.class);
   private final PositionIncrementAttribute posAttr = addAttribute(PositionIncrementAttribute.class);
   private final OffsetAttribute offsetAttr = addAttribute(OffsetAttribute.class);
@@ -39,17 +48,24 @@ public final class PatterCaptureGroupTokenFilter extends TokenFilter {
   private int groupCount = -1;
   private int currentGroup = -1;
   private int charOffsetStart;
-  
+  private boolean preserveOriginal;
+  private boolean originalPreserved = false;
+
   /**
    * TODO
-   * @param input the input {@link TokenStream}
-   * @param pattern the pattern to obtain the capturing groups from.
+   *
+   * @param input
+   *          the input {@link TokenStream}
+   * @param pattern
+   *          the pattern to obtain the capturing groups from.
    */
-  public PatterCaptureGroupTokenFilter(TokenStream input, Pattern pattern) {
+  public PatternCaptureGroupTokenFilter(TokenStream input, Pattern pattern,
+      Boolean preserveOriginal) {
     super(input);
+    this.preserveOriginal = preserveOriginal;
     this.matcher = pattern.matcher("");
   }
-  
+
   @Override
   public boolean incrementToken() throws IOException {
     if (groupCount != -1) {
@@ -65,9 +81,14 @@ public final class PatterCaptureGroupTokenFilter extends TokenFilter {
           return true;
         }
       }
+      if (matcher.find()) {
+        currentGroup = 1;
+        return this.incrementToken();
+      }
       groupCount = currentGroup = -1;
+      originalPreserved = false;
     }
-    
+
     if (input.incrementToken()) {
       char[] buffer = charTermAttr.buffer();
       int length = charTermAttr.length();
@@ -79,6 +100,12 @@ public final class PatterCaptureGroupTokenFilter extends TokenFilter {
           final int start = matcher.start(i);
           final int end = matcher.end(i);
           if (start != end) {
+            if (!originalPreserved && preserveOriginal
+                && (start > 0 || end < length)) {
+              originalPreserved = true;
+              currentGroup = i;
+              return true;
+            }
             currentGroup = i + 1;
             if (start == 0) {
               // if we start at 0 we can simply set the length and safe the copy
@@ -98,12 +125,14 @@ public final class PatterCaptureGroupTokenFilter extends TokenFilter {
     }
     return false;
   }
-  
+
   @Override
   public void reset() throws IOException {
     super.reset();
     groupCount = -1;
     currentGroup = -1;
+    originalPreserved = false;
     matcher.reset("");
   }
+
 }
