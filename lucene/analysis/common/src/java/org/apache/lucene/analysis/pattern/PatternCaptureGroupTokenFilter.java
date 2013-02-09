@@ -31,17 +31,28 @@ import org.apache.lucene.util.CharsRef;
  * CaptureGroup uses Java regexes to emit multiple tokens - one for each capture
  * group in one or more patterns.
  *
- * <p>For example, a pattern like:</p>
+ * <p>
+ * For example, a pattern like:
+ * </p>
  *
- * <p><code>"(https?://([a-zA-Z\-_0-9.]+))"</code></p>
+ * <p>
+ * <code>"(https?://([a-zA-Z\-_0-9.]+))"</code>
+ * </p>
  *
- * <p>when matched against the string "http://www.foo.com/index" would return
- * the tokens "https://www.foo.com" and "www.foo.com".</p>
+ * <p>
+ * when matched against the string "http://www.foo.com/index" would return the
+ * tokens "https://www.foo.com" and "www.foo.com".
+ * </p>
  *
- * <p>If none of the patterns match, or if preserveOriginal is true, the original
- * token will be preserved.</p>
- * <p>A camelCaseFilter could be written as:</p>
- * <p><code>
+ * <p>
+ * If none of the patterns match, or if preserveOriginal is true, the original
+ * token will be preserved.
+ * </p>
+ * <p>
+ * A camelCaseFilter could be written as:
+ * </p>
+ * <p>
+ * <code>
  *   "(?:^|\b)([a-z]+)"          # returns "camel"           <br />
  *   "(?<=[a-z])([A-Z][a-z]+)"   # returns "Camel", "Filter" <br />
  * </code>
@@ -86,7 +97,23 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     }
   }
 
-  private boolean nextMatch() {
+  /**
+   * @param input
+   *          the input {@link TokenStream}
+   * @param pattern
+   *          a {@link Pattern} object to match against each token
+   * @param preserveOriginal
+   *          set to true to return the original token even if one of the
+   *          patterns matches
+   */
+
+  public PatternCaptureGroupTokenFilter(TokenStream input, Pattern pattern,
+      boolean preserveOriginal) {
+    this(input, new Pattern[] {pattern}, preserveOriginal);
+  }
+
+  private boolean nextCapture() {
+
     if (matcher != null) {
       if (matcher.find()) {
         return true;
@@ -99,7 +126,10 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
       matcher.reset(spare);
       if (matcher.find()) {
         groupCount = matcher.groupCount();
-        return true;
+        if (groupCount != 0) {
+          return true;
+        }
+        groupCount = -1;
       }
       matcher.reset("");
     }
@@ -109,21 +139,10 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     return false;
   }
 
-  private boolean emitToken(int start, int end) {
-    if (start == 0 && currentMatcher == 0) {
-      // if we start at 0 we can simply set the length and safe the copy
-      charTermAttr.setLength(end);
-    } else {
-      charTermAttr.copyBuffer(spare.chars, start, end - start);
-    }
-    posAttr.setPositionIncrement(0);
-    offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
-    return true;
-  }
-
   @Override
   public boolean incrementToken() throws IOException {
 
+    // All groups and matchers after the first
     if (groupCount != -1) {
       for (int i = currentGroup; i < groupCount + 1; i++) {
         final int start = matcher.start(i);
@@ -131,10 +150,13 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
         if (start != end) {
           clearAttributes();
           currentGroup = i + 1;
-          return emitToken(start, end);
+          posAttr.setPositionIncrement(0);
+          charTermAttr.copyBuffer(spare.chars, start, end - start);
+          offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+          return true;
         }
       }
-      if (nextMatch()) {
+      if (nextCapture()) {
         currentGroup = 1;
         return this.incrementToken();
       }
@@ -150,20 +172,31 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     int length = charTermAttr.length();
     spare.copyChars(buffer, 0, length);
 
-    while (nextMatch()) {
+    // Get the first match
+    while (nextCapture()) {
       for (int i = 1; i < groupCount + 1; i++) {
         final int start = matcher.start(i);
         final int end = matcher.end(i);
         if (start != end) {
+          charOffsetStart = offsetAttr.startOffset();
+
+          // Preserve original if requested and not the same as the first token
           if (!originalPreserved && preserveOriginal
               && (start > 0 || end < length)) {
             originalPreserved = true;
             currentGroup = i;
             return true;
           }
+
           currentGroup = i + 1;
-          charOffsetStart = offsetAttr.startOffset();
-          return emitToken(start, end);
+          if (start == 0) {
+            // if we start at 0 we can simply set the length and save the copy
+            charTermAttr.setLength(end);
+          } else {
+            charTermAttr.copyBuffer(spare.chars, start, end - start);
+          }
+          offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+          return true;
         }
       }
       groupCount = currentGroup = currentMatcher = -1;
