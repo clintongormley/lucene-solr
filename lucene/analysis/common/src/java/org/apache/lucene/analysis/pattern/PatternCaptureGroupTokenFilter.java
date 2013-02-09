@@ -69,13 +69,11 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
   private final OffsetAttribute offsetAttr = addAttribute(OffsetAttribute.class);
   private final Matcher[] matchers;
   private final CharsRef spare = new CharsRef();
-  private int groupCount = -1;
-  private int currentGroup = -1;
-  private int currentMatcher = -1;
-  private Matcher matcher;
+  private int[] groupCounts;
+  private int[] currentGroup;
   private int charOffsetStart;
+  private int currentMatcher;
   private boolean preserveOriginal;
-  private boolean originalPreserved = false;
 
   /**
    * @param input
@@ -92,8 +90,12 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     super(input);
     this.preserveOriginal = preserveOriginal;
     this.matchers = new Matcher[patterns.length];
+    this.groupCounts = new int[patterns.length];
+    this.currentGroup = new int[patterns.length];
     for (int i = 0; i < patterns.length; i++) {
       this.matchers[i] = patterns[i].matcher("");
+      this.groupCounts[i] = this.matchers[i].groupCount();
+      this.currentGroup[i] = -1;
     }
   }
 
@@ -113,55 +115,56 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
   }
 
   private boolean nextCapture() {
-
-    if (matcher != null) {
-      if (matcher.find()) {
-        return true;
-      }
-      matcher.reset("");
-    }
-
-    while (++currentMatcher < matchers.length) {
-      matcher = matchers[currentMatcher];
-      matcher.reset(spare);
-      if (matcher.find()) {
-        groupCount = matcher.groupCount();
-        if (groupCount != 0) {
-          return true;
-        }
-        groupCount = -1;
-      }
-      matcher.reset("");
-    }
-
+    int min_offset = Integer.MAX_VALUE;
     currentMatcher = -1;
-    matcher = null;
-    return false;
+    Matcher matcher;
+
+    for (int i = 0; i < matchers.length; i++) {
+      matcher = matchers[i];
+      if (currentGroup[i] == -1) {
+        currentGroup[i] = matcher.find() ? 1 : 0;
+      }
+      if (currentGroup[i] != 0) {
+        while (currentGroup[i] < groupCounts[i] + 1) {
+          final int start = matcher.start(currentGroup[i]);
+          final int end = matcher.end(currentGroup[i]);
+          if (start == end || preserveOriginal && start == 0
+              && spare.length == end) {
+            currentGroup[i]++;
+            continue;
+          }
+          if (start < min_offset) {
+            min_offset = start;
+            currentMatcher = i;
+          }
+          break;
+        }
+        if (currentGroup[i] == groupCounts[i] + 1) {
+          currentGroup[i] = -1;
+          i--;
+        }
+      }
+    }
+    return currentMatcher != -1;
   }
 
   @Override
   public boolean incrementToken() throws IOException {
 
-    // All groups and matchers after the first
-    if (groupCount != -1) {
-      for (int i = currentGroup; i < groupCount + 1; i++) {
-        final int start = matcher.start(i);
-        final int end = matcher.end(i);
-        if (start != end) {
-          clearAttributes();
-          currentGroup = i + 1;
-          posAttr.setPositionIncrement(0);
-          charTermAttr.copyBuffer(spare.chars, start, end - start);
-          offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
-          return true;
-        }
-      }
-      if (nextCapture()) {
-        currentGroup = 1;
-        return this.incrementToken();
-      }
-      groupCount = currentGroup = -1;
-      originalPreserved = false;
+    if (currentMatcher != -1 && nextCapture()) {
+
+      clearAttributes();
+
+      final int start = matchers[currentMatcher]
+          .start(currentGroup[currentMatcher]);
+      final int end = matchers[currentMatcher]
+          .end(currentGroup[currentMatcher]);
+
+      posAttr.setPositionIncrement(0);
+      charTermAttr.copyBuffer(spare.chars, start, end - start);
+      offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+      currentGroup[currentMatcher]++;
+      return true;
     }
 
     if (!input.incrementToken()) {
@@ -171,48 +174,37 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     char[] buffer = charTermAttr.buffer();
     int length = charTermAttr.length();
     spare.copyChars(buffer, 0, length);
+    charOffsetStart = offsetAttr.startOffset();
 
-    // Get the first match
-    while (nextCapture()) {
-      for (int i = 1; i < groupCount + 1; i++) {
-        final int start = matcher.start(i);
-        final int end = matcher.end(i);
-        if (start != end) {
-          charOffsetStart = offsetAttr.startOffset();
+    for (int i = 0; i < matchers.length; i++) {
+      matchers[i].reset(spare);
+      currentGroup[i] = -1;
+    }
 
-          // Preserve original if requested and not the same as the first token
-          if (!originalPreserved && preserveOriginal
-              && (start > 0 || end < length)) {
-            originalPreserved = true;
-            currentGroup = i;
-            return true;
-          }
+    if (preserveOriginal) {
+      currentMatcher = 0;
+    } else if (nextCapture()) {
+      final int start = matchers[currentMatcher]
+          .start(currentGroup[currentMatcher]);
+      final int end = matchers[currentMatcher]
+          .end(currentGroup[currentMatcher]);
 
-          currentGroup = i + 1;
-          if (start == 0) {
-            // if we start at 0 we can simply set the length and save the copy
-            charTermAttr.setLength(end);
-          } else {
-            charTermAttr.copyBuffer(spare.chars, start, end - start);
-          }
-          offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
-          return true;
-        }
+      // if we start at 0 we can simply set the length and save the copy
+      if (start == 0) {
+        charTermAttr.setLength(end);
+      } else {
+        charTermAttr.copyBuffer(spare.chars, start, end - start);
       }
-      groupCount = currentGroup = currentMatcher = -1;
+      offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+      currentGroup[currentMatcher]++;
     }
     return true;
+
   }
 
   @Override
   public void reset() throws IOException {
     super.reset();
-    if (matcher != null) {
-      matcher.reset("");
-    }
-    groupCount = -1;
-    currentGroup = -1;
-    originalPreserved = false;
     currentMatcher = -1;
   }
 

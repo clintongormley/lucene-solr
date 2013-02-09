@@ -492,18 +492,18 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
     testPatterns(
         "aaabbbaaa",
         new String[] {"(aaa)","(bbb)","(ccc)"},
-        new String[] {"aaa","aaa","bbb"},
-        new int[] {0,6,3},
-        new int[] {3,9,6},
+        new String[] {"aaa","bbb","aaa"},
+        new int[] {0,3,6},
+        new int[] {3,6,9},
         new int[] {1,0,0},
         false
     );
     testPatterns(
         "aaabbbaaa",
         new String[] {"(aaa)","(bbb)","(ccc)"},
-        new String[] {"aaabbbaaa","aaa","aaa","bbb"},
-        new int[] {0,0,6,3},
-        new int[] {9,3,9,6},
+        new String[] {"aaabbbaaa","aaa","bbb","aaa"},
+        new int[] {0,0,3,6},
+        new int[] {9,3,6,9},
         new int[] {1,0,0,0},
         true
     );
@@ -513,8 +513,8 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
         new String[] {"(aaa)","(bbb)","(ccc)"},
         new String[] {"aaa","bbb","aaa"},
         new int[] {0,4,8},
-        new int[] {3,7,10},
-        new int[] {1,0,0},
+        new int[] {3,7,11},
+        new int[] {1,1,1},
         false
     );
 
@@ -523,8 +523,8 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
         new String[] {"(aaa)","(bbb)","(ccc)"},
         new String[] {"aaa","bbb","aaa"},
         new int[] {0,4,8},
-        new int[] {3,7,10},
-        new int[] {1,0,0},
+        new int[] {3,7,11},
+        new int[] {1,1,1},
         true
     );
   }
