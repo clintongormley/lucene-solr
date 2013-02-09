@@ -23,18 +23,6 @@ import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 
-/**
- * no pattern no match true no match false no match [] no capture true no
- * capture false capture start true capture start false capture middle true
- * capture middle false capture end true capture end false capture start middle
- * true capture start middle false capture start end true capture start end
- * false capture middle end true capture middle end false capture start middle
- * end true capture start middle end false
- *
- * multi tokens?
- *
- *
- */
 public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
 
   public void testNoPattern() throws Exception {
@@ -152,6 +140,47 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
     testPatterns(
         "foo bar baz",
         new String[] {".."},
+        new String[] {"foo","bar","baz"},
+        new int[] {0,4,8},
+        new int[] {3,7,11},
+        new int[] {1,1,1},
+        true
+    );
+  }
+
+  public void testEmptyCapture() throws Exception {
+    testPatterns(
+        "foobarbaz",
+        new String[] {".(y*)"},
+        new String[] {"foobarbaz"},
+        new int[] {0},
+        new int[] {9},
+        new int[] {1},
+        false
+    );
+    testPatterns(
+        "foobarbaz",
+        new String[] {".(y*)"},
+        new String[] {"foobarbaz"},
+        new int[] {0},
+        new int[] {9},
+        new int[] {1},
+        true
+    );
+
+    testPatterns(
+        "foo bar baz",
+        new String[] {".(y*)"},
+        new String[] {"foo","bar","baz"},
+        new int[] {0,4,8},
+        new int[] {3,7,11},
+        new int[] {1,1,1},
+        false
+    );
+
+    testPatterns(
+        "foo bar baz",
+        new String[] {".(y*)"},
         new String[] {"foo","bar","baz"},
         new int[] {0,4,8},
         new int[] {3,7,11},
@@ -527,6 +556,47 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
         new int[] {1,1,1},
         true
     );
+  }
+
+
+  public void testCamelCase() throws Exception {
+    testPatterns(
+        "letsPartyLIKEits1999_dude",
+        new String[] {
+            "([A-Z]{2,})",
+            "(?<![A-Z])([A-Z][a-z]+)",
+            "(?:^|\\b|(?<=[0-9_])|(?<=[A-Z]{2}))([a-z]+)",
+            "([0-9]+)"
+        },
+        new String[] {"lets","Party","LIKE","its","1999","dude"},
+        new int[] {0,4,9,13,16,21},
+        new int[] {4,9,13,16,20,25},
+        new int[] {1,0,0,0,0,0,0},
+        false
+    );
+    testPatterns(
+        "letsPartyLIKEits1999_dude",
+        new String[] {
+            "([A-Z]{2,})",
+            "(?<![A-Z])([A-Z][a-z]+)",
+            "(?:^|\\b|(?<=[0-9_])|(?<=[A-Z]{2}))([a-z]+)",
+            "([0-9]+)"
+        },
+        new String[] {"letsPartyLIKEits1999_dude","lets","Party","LIKE","its","1999","dude"},
+        new int[] {0,0,4,9,13,16,21},
+        new int[] {25,4,9,13,16,20,25},
+        new int[] {1,0,0,0,0,0,0,0},
+        true
+    );
+  }
+
+  public void testAltConstructor() throws Exception {
+    Pattern pattern = Pattern.compile("(foo)");
+    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
+        new StringReader("foo"), MockTokenizer.WHITESPACE, false), pattern,
+        false);
+    assertTokenStreamContents(ts, new String[] {"foo"}, new int[] {0},
+        new int[] {3}, new int[] {1});
   }
 
   private void testPatterns(String input, String[] regexes, String[] tokens,
