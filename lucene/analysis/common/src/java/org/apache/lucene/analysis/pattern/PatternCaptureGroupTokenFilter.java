@@ -49,12 +49,20 @@ import org.apache.lucene.util.CharsRef;
  * token will be preserved.
  * </p>
  * <p>
+ * Each pattern is matched as often as it can be, so the pattern
+ * <code> "(...)"</code>,
+ * when matched against <code>"abcdefghi"</code> would produce
+ * <code>["abc","def","ghi"]</code>
+ * </p>
+ * <p>
  * A camelCaseFilter could be written as:
  * </p>
  * <p>
  * <code>
- *   "(?:^|\b)([a-z]+)"          # returns "camel"           <br />
- *   "(?<=[a-z])([A-Z][a-z]+)"   # returns "Camel", "Filter" <br />
+ *   "([A-Z]{2,})",                                 <br />
+ *   "(?&lt;![A-Z])([A-Z][a-z]+)",                     <br />
+ *   "(?:^|\\b|(?&lt;=[0-9_])|(?&lt;=[A-Z]{2}))([a-z]+)", <br />
+ *   "([0-9]+)"
  * </code>
  * </p>
  * <p>
