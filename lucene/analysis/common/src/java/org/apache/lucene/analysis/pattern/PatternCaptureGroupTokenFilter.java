@@ -77,11 +77,11 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
   private final OffsetAttribute offsetAttr = addAttribute(OffsetAttribute.class);
   private final Matcher[] matchers;
   private final CharsRef spare = new CharsRef();
-  private int[] groupCounts;
+  private final int[] groupCounts;
+  private final boolean preserveOriginal;
   private int[] currentGroup;
   private int charOffsetStart;
   private int currentMatcher;
-  private boolean preserveOriginal;
 
   /**
    * @param input
