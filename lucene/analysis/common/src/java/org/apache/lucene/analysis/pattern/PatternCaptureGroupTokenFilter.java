@@ -86,15 +86,14 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
   /**
    * @param input
    *          the input {@link TokenStream}
-   * @param patterns
-   *          an array of {@link Pattern} objects to match against each token
    * @param preserveOriginal
    *          set to true to return the original token even if one of the
    *          patterns matches
+   * @param patterns
+   *          an array of {@link Pattern} objects to match against each token
    */
 
-  public PatternCaptureGroupTokenFilter(TokenStream input, Pattern[] patterns,
-      boolean preserveOriginal) {
+  public PatternCaptureGroupTokenFilter(TokenStream input, boolean preserveOriginal,Pattern... patterns) {
     super(input);
     this.preserveOriginal = preserveOriginal;
     this.matchers = new Matcher[patterns.length];
@@ -105,21 +104,6 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
       this.groupCounts[i] = this.matchers[i].groupCount();
       this.currentGroup[i] = -1;
     }
-  }
-
-  /**
-   * @param input
-   *          the input {@link TokenStream}
-   * @param pattern
-   *          a {@link Pattern} object to match against each token
-   * @param preserveOriginal
-   *          set to true to return the original token even if one of the
-   *          patterns matches
-   */
-
-  public PatternCaptureGroupTokenFilter(TokenStream input, Pattern pattern,
-      boolean preserveOriginal) {
-    this(input, new Pattern[] {pattern}, preserveOriginal);
   }
 
   private boolean nextCapture() {

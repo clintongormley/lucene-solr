@@ -590,15 +590,6 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
     );
   }
 
-  public void testAltConstructor() throws Exception {
-    Pattern pattern = Pattern.compile("(foo)");
-    TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
-        new StringReader("foo"), MockTokenizer.WHITESPACE, false), pattern,
-        false);
-    assertTokenStreamContents(ts, new String[] {"foo"}, new int[] {0},
-        new int[] {3}, new int[] {1});
-  }
-
   private void testPatterns(String input, String[] regexes, String[] tokens,
       int[] startOffsets, int[] endOffsets, int[] positions,
       boolean preserveOriginal) throws Exception {
@@ -607,8 +598,8 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
       patterns[i] = Pattern.compile(regexes[i]);
     }
     TokenStream ts = new PatternCaptureGroupTokenFilter(new MockTokenizer(
-        new StringReader(input), MockTokenizer.WHITESPACE, false), patterns,
-        preserveOriginal);
+        new StringReader(input), MockTokenizer.WHITESPACE, false),
+        preserveOriginal, patterns);
     assertTokenStreamContents(ts, tokens, startOffsets, endOffsets, positions);
   }
 
