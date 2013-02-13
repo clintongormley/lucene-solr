@@ -17,54 +17,36 @@ package org.apache.lucene.analysis.pattern;
  * limitations under the License.
  */
 
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.pattern.PatternReplaceFilter;
-import org.apache.lucene.analysis.util.TokenFilterFactory;
-
 import java.util.Map;
 import java.util.regex.Pattern;
+
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.util.TokenFilterFactory;
+
 /**
- * Factory for {@link PatternReplaceFilter}. 
- * <pre class="prettyprint" >
- * &lt;fieldType name="text_ptnreplace" class="solr.TextField" positionIncrementGap="100"&gt;
+ * Factory for {@link PatternCaptureGroupTokenFilter}. 
+* <pre class="prettyprint" >
+ * &lt;fieldType name="text_ptncapturegroup" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.KeywordTokenizerFactory"/&gt;
- *     &lt;filter class="solr.PatternReplaceFilterFactory" pattern="([^a-z])" replacement=""
- *             replace="all"/&gt;
+ *     &lt;filter class="solr.PatternCaptureGroupTokenFilter" pattern="([^a-z])" preserve_original="true"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
- * @see PatternReplaceFilter
+ * @see PatternCaptureGroupTokenFilter
  */
-public class PatternReplaceFilterFactory extends TokenFilterFactory {
-  Pattern p;
-  String replacement;
-  boolean all = true;
+public class PatternCaptureGroupFilterFactory extends TokenFilterFactory {
+  private Pattern pattern;
+  private boolean preserveOriginal = true;
   
   @Override
   public void init(Map<String, String> args) {
     super.init(args);
-    p = getPattern("pattern");
-    replacement = args.get("replacement");
-    
-    String r = args.get("replace");
-    if (null != r) {
-      if (r.equals("all")) {
-        all = true;
-      } else {
-        if (r.equals("first")) {
-          all = false;
-        } else {
-          throw new IllegalArgumentException
-            ("Configuration Error: 'replace' must be 'first' or 'all' in "
-             + this.getClass().getName());
-        }
-      }
-    }
-
+    pattern = getPattern("pattern");
+    preserveOriginal = args.containsKey("preserve_original") ? Boolean.parseBoolean(args.get("preserve_original")) : true;
   }
   @Override
-  public PatternReplaceFilter create(TokenStream input) {
-    return new PatternReplaceFilter(input, p, replacement, all);
+  public PatternCaptureGroupTokenFilter create(TokenStream input) {
+    return new PatternCaptureGroupTokenFilter(input, preserveOriginal, pattern);
   }
 }
