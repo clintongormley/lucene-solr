@@ -50,9 +50,8 @@ import org.apache.lucene.util.CharsRef;
  * </p>
  * <p>
  * Each pattern is matched as often as it can be, so the pattern
- * <code> "(...)"</code>,
- * when matched against <code>"abcdefghi"</code> would produce
- * <code>["abc","def","ghi"]</code>
+ * <code> "(...)"</code>, when matched against <code>"abcdefghi"</code> would
+ * produce <code>["abc","def","ghi"]</code>
  * </p>
  * <p>
  * A camelCaseFilter could be written as:
@@ -81,6 +80,7 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
   private final boolean preserveOriginal;
   private int[] currentGroup;
   private int charOffsetStart;
+  private int charOffsetEnd;
   private int currentMatcher;
 
   /**
@@ -93,7 +93,8 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
    *          an array of {@link Pattern} objects to match against each token
    */
 
-  public PatternCaptureGroupTokenFilter(TokenStream input, boolean preserveOriginal,Pattern... patterns) {
+  public PatternCaptureGroupTokenFilter(TokenStream input,
+      boolean preserveOriginal, Pattern... patterns) {
     super(input);
     this.preserveOriginal = preserveOriginal;
     this.matchers = new Matcher[patterns.length];
@@ -154,7 +155,7 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
 
       posAttr.setPositionIncrement(0);
       charTermAttr.copyBuffer(spare.chars, start, end - start);
-      offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+      offsetAttr.setOffset(charOffsetStart, charOffsetEnd);
       currentGroup[currentMatcher]++;
       return true;
     }
@@ -167,6 +168,7 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     int length = charTermAttr.length();
     spare.copyChars(buffer, 0, length);
     charOffsetStart = offsetAttr.startOffset();
+    charOffsetEnd = charOffsetStart + spare.length;
 
     for (int i = 0; i < matchers.length; i++) {
       matchers[i].reset(spare);
@@ -187,7 +189,7 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
       } else {
         charTermAttr.copyBuffer(spare.chars, start, end - start);
       }
-      offsetAttr.setOffset(charOffsetStart + start, charOffsetStart + end);
+      offsetAttr.setOffset(charOffsetStart, charOffsetEnd);
       currentGroup[currentMatcher]++;
     }
     return true;
