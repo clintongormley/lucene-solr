@@ -16,12 +16,15 @@ package org.apache.lucene.analysis.pattern;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.io.Reader;
 import java.io.StringReader;
 import java.util.regex.Pattern;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 
 public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase {
 
@@ -588,6 +591,23 @@ public class TestPatternCaptureGroupTokenFilter extends BaseTokenStreamTestCase 
         new int[] {1,0,0,0,0,0,0,0},
         true
     );
+  }
+
+  public void testRandomString() throws Exception {
+    Analyzer a = new Analyzer() {
+
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName,
+          Reader reader) {
+        Tokenizer tokenizer = new MockTokenizer(reader,
+            MockTokenizer.WHITESPACE, false);
+        return new TokenStreamComponents(tokenizer,
+            new PatternCaptureGroupTokenFilter(tokenizer, false,
+                Pattern.compile("((..)(..))")));
+      }
+    };
+
+    checkRandomData(random(), a, 1000 * RANDOM_MULTIPLIER);
   }
 
   private void testPatterns(String input, String[] regexes, String[] tokens,

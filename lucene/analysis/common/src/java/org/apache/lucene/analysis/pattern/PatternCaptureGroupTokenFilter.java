@@ -168,7 +168,7 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
     int length = charTermAttr.length();
     spare.copyChars(buffer, 0, length);
     charOffsetStart = offsetAttr.startOffset();
-    charOffsetEnd = charOffsetStart + spare.length;
+    charOffsetEnd = offsetAttr.endOffset();
 
     for (int i = 0; i < matchers.length; i++) {
       matchers[i].reset(spare);
@@ -189,7 +189,6 @@ public final class PatternCaptureGroupTokenFilter extends TokenFilter {
       } else {
         charTermAttr.copyBuffer(spare.chars, start, end - start);
       }
-      offsetAttr.setOffset(charOffsetStart, charOffsetEnd);
       currentGroup[currentMatcher]++;
     }
     return true;
